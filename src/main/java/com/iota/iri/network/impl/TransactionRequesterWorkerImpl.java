@@ -3,7 +3,7 @@ package com.iota.iri.network.impl;
 import com.iota.iri.controllers.TipsViewModel;
 import com.iota.iri.controllers.TransactionViewModel;
 import com.iota.iri.model.Hash;
-import com.iota.iri.network.Neighbor;
+import com.iota.iri.network.Peer;
 import com.iota.iri.network.Node;
 import com.iota.iri.network.TransactionRequester;
 import com.iota.iri.network.TransactionRequesterWorker;
@@ -12,7 +12,7 @@ import com.iota.iri.utils.thread.DedicatedScheduledExecutorService;
 import com.iota.iri.utils.thread.SilentScheduledExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -110,10 +110,10 @@ public class TransactionRequesterWorkerImpl implements TransactionRequesterWorke
             if (transactionRequester.numberOfTransactionsToRequest() >= REQUESTER_THREAD_ACTIVATION_THRESHOLD) {
                 TransactionViewModel transaction = getTransactionToSendWithRequest();
                 if (transaction != null && transaction.getType() != TransactionViewModel.PREFILLED_SLOT) {
-                    for (Neighbor neighbor : node.getNeighbors()) {
+                    for (Peer peer : node.getPeers()) {
                         try {
                             // automatically adds the hash of a requested transaction when sending a packet
-                            node.sendPacket(transaction, neighbor);
+                            peer.enqueueSendPacket(ByteBuffer.wrap(transaction.getBytes()));
                         } catch (Exception e) {
                             log.error("unexpected error while sending request to neighbour", e);
                         }

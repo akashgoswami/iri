@@ -6,14 +6,14 @@ import com.iota.iri.service.API;
 
 /**
  * 
- * Contains information about the result of a successful {@code getNeighbors} API call.
- * See {@link API#getNeighborsStatement} for how this response is created.
+ * Contains information about the result of a successful {@code getPeers} API call.
+ * See {@link API#getPeersStatement} for how this response is created.
  *
  */
 public class GetNeighborsResponse extends AbstractResponse {
 
     /**
-     * The neighbors you are connected with, as well as their activity counters.
+     * The Peers you are connected with, as well as their activity counters.
      * This includes the following statistics:
      * <ol>
      *     <li>address</li>
@@ -25,40 +25,40 @@ public class GetNeighborsResponse extends AbstractResponse {
      *     <li>numberOfSentTransactions</li>
      *     <li>numberOfStaleTransactions</li>
      * </ol>
-     * @see {@link com.iota.iri.service.dto.GetNeighborsResponse.Neighbor}
+     * @see {@link com.iota.iri.service.dto.GetPeersResponse.Peer}
      */
-    private Neighbor[] neighbors;
+    private Peer[] Peers;
 
     /**
      * 
-     * @return {@link #neighbors}
+     * @return {@link #Peers}
      */
-    public Neighbor[] getNeighbors() {
-        return neighbors;
+    public Peer[] getPeers() {
+        return Peers;
     }
     
     /**
-     * Creates a new {@link GetNeighborsResponse}
+     * Creates a new {@link GetPeersResponse}
      * 
-     * @param elements {@link com.iota.iri.network.Neighbor}
-     * @return an {@link GetNeighborsResponse} filled all neighbors and their activity.
+     * @param elements {@link com.iota.iri.network.Peer}
+     * @return an {@link GetPeersResponse} filled all Peers and their activity.
      */
-    public static AbstractResponse create(final List<com.iota.iri.network.Neighbor> elements) {
+    public static AbstractResponse create(final List<com.iota.iri.network.Peer> elements) {
         GetNeighborsResponse res = new GetNeighborsResponse();
-        res.neighbors = new Neighbor[elements.size()];
+        res.Peers = new Peer[elements.size()];
         int i = 0;
-        for (com.iota.iri.network.Neighbor n : elements) {
-            res.neighbors[i++] = Neighbor.createFrom(n);
+        for (com.iota.iri.network.Peer n : elements) {
+            res.Peers[i++] = Peer.createFrom(n);
         }
         return res;
     }
     
     /**
      * 
-     * A plain DTO of an iota neighbor.
+     * A plain DTO of an iota Peer.
      * 
      */
-    static class Neighbor {
+    static class Peer {
 
         private String address;
         public long numberOfAllTransactions,
@@ -70,7 +70,7 @@ public class GetNeighborsResponse extends AbstractResponse {
         public String connectionType;
 
         /**
-         * The address of your neighbor
+         * The address of your Peer
          * 
          * @return the address
          */
@@ -97,7 +97,7 @@ public class GetNeighborsResponse extends AbstractResponse {
         }
 
         /**
-         * Invalid transactions your neighbor has sent you. 
+         * Invalid transactions your Peer has sent you. 
          * These are transactions with invalid signatures or overall schema.
          * 
          * @return the number
@@ -107,7 +107,7 @@ public class GetNeighborsResponse extends AbstractResponse {
         }
 
         /**
-         * Stale transactions your neighbor has sent you.
+         * Stale transactions your Peer has sent you.
          * These are transactions with a timestamp older than your latest snapshot.
          *
          * @return the number
@@ -117,7 +117,7 @@ public class GetNeighborsResponse extends AbstractResponse {
         }
 
         /**
-         * Amount of transactions send through your neighbor
+         * Amount of transactions send through your Peer
          * 
          * @return the number
          */
@@ -126,7 +126,7 @@ public class GetNeighborsResponse extends AbstractResponse {
         }
 
         /**
-         * The method type your neighbor is using to connect (TCP / UDP)
+         * The method type your Peer is using to connect (TCP / UDP)
          * 
          * @return the connection type
          */
@@ -135,14 +135,14 @@ public class GetNeighborsResponse extends AbstractResponse {
         }
 
         /**
-         * Creates a new Neighbor DTO from a Neighbor network instance
-         * @param n the neighbor currently connected to this node
-         * @return a new instance of {@link GetNeighborsResponse.Neighbor}
+         * Creates a new Peer DTO from a Peer network instance
+         * @param n the Peer currently connected to this node
+         * @return a new instance of {@link GetPeersResponse.Peer}
          */
-        public static Neighbor createFrom(com.iota.iri.network.Neighbor n) {
-            Neighbor ne = new Neighbor();
+        public static Peer createFrom(com.iota.iri.network.Peer n) {
+            Peer ne = new Peer();
             int port = n.getPort();
-            ne.address = n.getAddress().getHostString() + ":" + port;
+            ne.address = n.getAddress()+ ":" + port;
             ne.numberOfAllTransactions = n.getNumberOfAllTransactions();
             ne.numberOfInvalidTransactions = n.getNumberOfInvalidTransactions();
             ne.numberOfStaleTransactions = n.getNumberOfStaleTransactions();

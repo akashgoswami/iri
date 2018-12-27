@@ -13,7 +13,7 @@ import com.iota.iri.crypto.SpongeFactory;
 import com.iota.iri.model.Hash;
 import com.iota.iri.model.HashFactory;
 import com.iota.iri.model.persistables.Transaction;
-import com.iota.iri.network.Neighbor;
+import com.iota.iri.network.Peer;
 import com.iota.iri.service.dto.*;
 import com.iota.iri.service.snapshot.Snapshot;
 import com.iota.iri.service.tipselection.TipSelector;
@@ -484,12 +484,14 @@ public class API {
                 }
                 case "getMissingTransactions": {
                     //TransactionRequester.instance().rescanTransactionsToRequest();
+                    /** TBD Add TransactionRequester Logic here
                     synchronized (instance.transactionRequester) {
                         List<String> missingTx = Arrays.stream(instance.transactionRequester.getRequestedTransactions())
                                 .map(Hash::toString)
                                 .collect(Collectors.toList());
                         return GetTipsResponse.create(missingTx);
                     }
+                    */
                 }
                 case "checkConsistency": {
                     if (invalidSubtangleStatus()) {
@@ -715,7 +717,7 @@ public class API {
        try {
            for (final String uriString : uris) {
                log.info("Adding neighbor: " + uriString);
-               final Neighbor neighbor = instance.node.newNeighbor(new URI(uriString), true);
+               final Peer neighbor = instance.node.newNeighbor(new URI(uriString), true);
                if (!instance.node.getNeighbors().contains(neighbor)) {
                    instance.node.getNeighbors().add(neighbor);
                    numberOfAddedNeighbors++;
@@ -964,7 +966,8 @@ public class API {
                 instance.node.queuedTransactionsSize(),
                 System.currentTimeMillis(),
                 instance.tipsViewModel.size(),
-                instance.transactionRequester.numberOfTransactionsToRequest(),
+                // TBD instance.transactionRequester.numberOfTransactionsToRequest(),
+                0, 
                 features,
                 instance.configuration.getCoordinator());
     }
