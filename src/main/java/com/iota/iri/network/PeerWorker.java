@@ -33,7 +33,8 @@ public class PeerWorker implements Runnable {
         this.snapshotProvider = snapshotProvider;
         this.transactionValidator = node.getTransactionValidator();
         this.tangle = tangle;
-     }
+        recentSeenBytes = new FIFOCache<>(node.getConfig().getCacheSizeBytes(), node.getConfig().getpDropCacheEntry());
+    }
 
     @Override
     public void run() {

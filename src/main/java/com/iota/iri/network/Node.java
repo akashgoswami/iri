@@ -41,8 +41,9 @@ import static java.util.concurrent.TimeUnit.*;
  */
 public class Node {
     private static final Logger log = LoggerFactory.getLogger(Node.class);
-    private TCPProtocol tcp;
-    private UDPProtocol udp;
+    private TCPProtocol tcp = new TCPProtocol();
+    private UDPProtocol udp = new UDPProtocol();
+    Thread udpThread, tcpThread;
 
 
     private int BROADCAST_QUEUE_SIZE;
@@ -92,9 +93,22 @@ public class Node {
     private void configureProtocol(){
         try {
             tcp.init(configuration);
+            tcpThread = new Thread(tcp);
+            tcpThread.start();
             udp.init(configuration);
+            udpThread = new Thread(udp);
+            udpThread.start();
 
         } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void startProtocol(){
+        try {
+            tcpThread.start();
+            udpThread.start();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -112,6 +126,12 @@ public class Node {
     public int getHashSize(){
         return configuration.getRequestHashSize();
     }
+
+
+    public final NodeConfig getConfig(){
+        return configuration;
+    }
+
 
     /*TBD: Check whether sufficient time has elapsed before every time creating a new copy of TipRequest. */
     public byte[] getTipRequest() throws Exception {
@@ -220,6 +240,12 @@ public class Node {
     }
 
     public void init() throws Exception {
+
+        configureProtocol();
+
+        configureNeighbor();
+
+        startProtocol();
 
         ScheduledExecutorService scheduledExecutorService =
                 Executors.newScheduledThreadPool(4);
