@@ -98,6 +98,14 @@ public class PeerWorker implements Runnable {
             synchronized (recentSeenBytes) {
                 recentSeenBytes.put(digest, receivedTransactionHash);
             }
+
+            try {
+                stored = receivedTransactionViewModel.store(tangle, snapshotProvider.getInitialSnapshot());
+            } catch (Exception e) {
+                log.error("Error accessing persistence store.", e);
+                peer.incInvalidTransactions();
+            }
+
         }
 
         Hash requestedHash = HashFactory.TRANSACTION.create(buf, TransactionViewModel.SIZE, node.getHashSize());
@@ -109,13 +117,6 @@ public class PeerWorker implements Runnable {
         prepareResponse(requestedHash, peer);
 
 
-
-        try {
-            stored = receivedTransactionViewModel.store(tangle, snapshotProvider.getInitialSnapshot());
-        } catch (Exception e) {
-            log.error("Error accessing persistence store.", e);
-            peer.incInvalidTransactions();
-        }
 
         if (stored) {
             receivedTransactionViewModel.setArrivalTime(System.currentTimeMillis());

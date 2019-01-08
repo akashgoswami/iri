@@ -23,6 +23,8 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.*;
 
 /**
@@ -67,6 +69,8 @@ public class Node {
     private final TransactionRequester transactionRequester;
     private final MessageQ messageQ;
     private final byte[] tipRequestingPacket = new byte[2048];
+    private long  lastTipRequestTS = 0;
+    private final long tipRequestRefreshInterval = 600000;
 
     private static final SecureRandom rnd = new SecureRandom();
 
@@ -134,16 +138,23 @@ public class Node {
 
 
     /*TBD: Check whether sufficient time has elapsed before every time creating a new copy of TipRequest. */
-    public byte[] getTipRequest() throws Exception {
+    public void prepareTipRequest() throws Exception {
 
         final TransactionViewModel transactionViewModel = TransactionViewModel.fromHash(tangle, latestMilestoneTracker.getLatestMilestoneHash());
         System.arraycopy(transactionViewModel.getBytes(), 0, tipRequestingPacket, 0, TransactionViewModel.SIZE);
         System.arraycopy(transactionViewModel.getHash().bytes(), 0, tipRequestingPacket, TransactionViewModel.SIZE,
                 configuration.getRequestHashSize());
         //Hash.SIZE_IN_BYTES);
-        return tipRequestingPacket;
+     }
 
-    }
+    public byte[] getTipRequest() throws Exception {
+
+        if (currentTimeMillis() > ( lastTipRequestTS  + tipRequestRefreshInterval)){
+            prepareTipRequest();
+        }
+        return tipRequestingPacket;
+   }
+
 
     public boolean isUriValid(final URI uri) {
         if (uri != null) {

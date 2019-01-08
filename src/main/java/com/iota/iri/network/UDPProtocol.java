@@ -10,6 +10,13 @@ import java.net.*;
 import java.util.*;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+
+import org.apache.commons.validator.routines.InetAddressValidator;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+
 
 public class UDPProtocol implements Runnable, Protocol {
 
@@ -19,6 +26,9 @@ public class UDPProtocol implements Runnable, Protocol {
     private static final Logger log = LoggerFactory.getLogger(Node.class);
     Map<String,Peer> myMap = new ConcurrentHashMap<String,Peer>();
 
+    /*Using more than one thread needs protection against concurrency issues*/
+    private ScheduledExecutorService scheduledExecutorService =
+            Executors.newScheduledThreadPool(1);
 
     public UDPProtocol() {
 
@@ -31,66 +41,99 @@ public class UDPProtocol implements Runnable, Protocol {
             e.printStackTrace();
         }
         channel.socket().bind(new InetSocketAddress(config.getUdpReceiverPort()));
+        final Runnable sendWorker = new SenderThread(this);
+        scheduledExecutorService.scheduleWithFixedDelay(sendWorker, 10, 1, SECONDS );
+
     }
 
     public void shutdown(){
-
-
+        scheduledExecutorService.shutdown();
+        channel.socket().close();
     }
 
     /**
-     * This function registers the listener on TCP incoming socket
-     * @param peer The queue instance where packets should be delivered
+     * This function registers the listener on UDP address and port combination
+     * @param peer The peer instance whose packets should be delivered
 
      */
     public void registerListener(Peer peer) {
-        String url = peer.getAddress() + ":" + peer.getPort();
-        myMap.put(url,peer);
+        // Peer address must be IP address and not hostname
+        InetAddressValidator validator = InetAddressValidator.getInstance();
 
-
-    }
-
-
-
-    @Override
-    public void run() {
-        log.info("Run called");
-        ByteBuffer buf = ByteBuffer.allocate(bufferLen);
-        String remoteString;
-        try {
-
-            while (true) {
-                buf.clear();
-                buf.rewind();
-
-                InetSocketAddress remoteAddr =  (InetSocketAddress)channel.receive(buf);
-                remoteString = remoteAddr.getHostString() +":"+ remoteAddr.getPort();
-                Peer peer = myMap.get(remoteString);
-                if (peer != null) {
-                    peer.enqueueRecvPacket(cloneByteBuffer(buf));
-                }
-                buf.flip();
-            }
-
-        } catch (IOException e1) {
-                e1.printStackTrace();
+        if (validator.isValid(peer.getAddress())) {
+            String url = peer.getAddress() + ":" + peer.getPort();
+            // Any old existing mapping will be automatically overwritten
+            myMap.put(url,peer);
         }
 
     }
 
-    public ByteBuffer cloneByteBuffer(final ByteBuffer original) {
-        final ByteBuffer clone = (original.isDirect()) ?
-                ByteBuffer.allocateDirect(original.capacity()) :
-                ByteBuffer.allocate(original.capacity());
+    /**
+     * This function removes the listener on UDP address and port combination
+     * @param peer The peer instance whose packets should no longer be listened
+     */
+    public void deRegisterListener(Peer peer) {
+        String url = peer.getAddress() + ":" + peer.getPort();
+        // Any old existing mapping will be automatically overwritten
+        myMap.remove(url);
+    }
 
-        final ByteBuffer readOnlyCopy = original.asReadOnlyBuffer();
 
-        // Flip and read from the original.
-        readOnlyCopy.flip();
-        clone.put(readOnlyCopy);
-        clone.flip();
+    /**
+     * This function loops through all registered peers and flushes down the send queue
+     */
+    private void flushSendQueue() {
+        myMap.entrySet().stream().forEach((e) ->{
+            Peer peer = e.getValue();
+            if (peer.getSendQueueCount() > 0) {
+                ByteBuffer buffer = peer.dequeueSendPacket();
+                try {
+                    channel.send(buffer, new InetSocketAddress(peer.getAddress(), peer.getPort()));
+                } catch (IOException er) {
+                    log.error("Failure to send UDP packet to peer", e.getKey(), er);
+                }
+            }
+        });
 
-        return clone;
+    }
+
+
+    @Override
+    public void run() {
+
+        String remoteString;
+        try {
+
+            while (true) {
+                ByteBuffer buf = ByteBuffer.allocate(bufferLen);
+                InetSocketAddress remoteAddr = (InetSocketAddress)channel.receive(buf);
+                remoteString = remoteAddr.getHostString() +":"+ remoteAddr.getPort();
+                Peer peer = myMap.get(remoteString);
+                if (peer != null) {
+                    buf.flip();
+                    peer.enqueueRecvPacket(buf);
+                }
+            }
+
+        } catch (IOException e) {
+                log.error("Failure in receiving UDP packet", e);
+        }
+
+    }
+
+
+    private class SenderThread implements  Runnable  {
+
+        private final UDPProtocol master;
+
+        public SenderThread(final UDPProtocol m){
+            master = m;
+        }
+
+        public void run(){
+
+            master.flushSendQueue();
+        }
     }
 
 }

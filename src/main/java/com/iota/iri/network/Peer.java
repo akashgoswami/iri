@@ -27,7 +27,7 @@ public class Peer {
     private AtomicLong numberOfStaleTransactions = new AtomicLong();
     
     private ArrayBlockingQueue<ByteBuffer> sendQueue = new ArrayBlockingQueue<>(10);
-    private ArrayBlockingQueue<ByteBuffer> receiveQueue = new ArrayBlockingQueue<>(10);
+    private ArrayBlockingQueue<ByteBuffer> receiveQueue = new ArrayBlockingQueue<>(100);
 
     private boolean stopped = false;
 
@@ -52,6 +52,11 @@ public class Peer {
         return address.getHostAddress();
     }
 
+    public String getUrl() {
+        return this.protocol + "://"+ address.getHostAddress()+ ":"+ port;
+    }
+
+
 
     public int getSendQueueCount(){
         return sendQueue.size();
@@ -67,18 +72,32 @@ public class Peer {
     }
 
     public ByteBuffer dequeueSendPacket() {
-        ByteBuffer packet = sendQueue.poll();
+        ByteBuffer packet = null;
+        try {
+            packet = sendQueue.take();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         return packet;
     }
 
     public boolean enqueueRecvPacket( ByteBuffer packet) {
-
-        receiveQueue.add(packet);
+        try {
+            receiveQueue.add(packet);
+        }
+        catch(IllegalStateException e){
+            log.error("Receive Queue overflow for Peer "+ getUrl());
+        }
         return true;
     }
 
     public ByteBuffer dequeueRecvPacket() {
-        ByteBuffer packet = receiveQueue.poll();
+        ByteBuffer packet = null;
+        try {
+            packet = receiveQueue.take();
+        } catch (InterruptedException e) {
+            log.error("Receive Queue dequeue interrupted for Peer "+ getUrl());
+        }
         return packet;
     }
 
